@@ -62,7 +62,6 @@ def load_dataset():
     }
     return dataset
 
-
 @app.route("/getelevation", methods=['GET'])
 # `/getelevation?pos=<pos>&crs=<crs>`
 # pos: the query position, as `x,y`
@@ -184,4 +183,4 @@ def getheightprofile():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
+    app.run(host='localhost', port=5002, debug=True)
