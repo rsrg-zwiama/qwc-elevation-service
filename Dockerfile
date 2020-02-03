@@ -1,15 +1,10 @@
-# WSGI service environment
+FROM sourcepole/qwc-uwsgi-base:ubuntu-latest
 
-FROM husseinkabbout/qwc-docker
+RUN apt-get update && apt-get upgrade -y
 
-# Required for pip with git repos
-RUN apk add --no-cache --update git
-# Required for psychopg, --> https://github.com/psycopg/psycopg2/issues/684
-RUN apk add --no-cache --update postgresql-dev gcc python3-dev musl-dev
-
-# maybe set locale here if needed
+RUN apt-get update && apt-get install -y python3-gdal
 
 ADD . /srv/qwc_service
 RUN pip3 install --no-cache-dir -r /srv/qwc_service/requirements.txt
 
-ENV SERVICE_MOUNTPOINT=/getelevation
+ENV SERVICE_MOUNTPOINT=/elevation
