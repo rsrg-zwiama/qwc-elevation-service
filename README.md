@@ -1,6 +1,23 @@
 # qwc-elevation-service
 
 
+Docker usage
+------------
+
+### Run docker image
+
+    docker run -p 5002:9090 sourcepole/qwc-elevation-service
+
+
+| docker parameters | Description |
+|----------------------|-------------|
+|`-p 5002:9090` | This binds port 9090 of the container to port 5002 on 127.0.0.1 of the host machine. |
+
+### Build docker image locally:
+
+    docker build .
+
+
 Elevation service
 -----------------
 
@@ -9,6 +26,8 @@ Returns elevations.
 Run as
 
     ELEVATION_DATASET=<path/to/dtm.tif> python elevation.py
+
+Default elevation dataset: https://data.sourcepole.com/srtm_1km_3857.tif
 
 Requires GDAL Python bindings. `python-gdal` or `python3-gdal` packages on Debian/Ubuntu (Note: virtualenv creation requires --system-site-packages option).
 
