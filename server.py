@@ -5,7 +5,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from flask import Flask, g, abort, request, Response, jsonify
+from flask import Flask, g, abort, request, Response, jsonify, make_response
 from flask_cors import CORS
 from itertools import accumulate
 from osgeo import gdal
@@ -16,6 +16,7 @@ import os
 import re
 import struct
 import sys
+import requests
 
 app = Flask(__name__)
 CORS(app)
@@ -180,6 +181,39 @@ def getheightprofile():
         x += totDistance / (numSamples - 1)
 
     return jsonify({"elevations": elevations})
+
+
+""" readyness probe endpoint """
+@app.route("/ready", methods=['GET'])
+def ready():
+    return jsonify({"status": "OK"})
+
+
+""" liveness probe endpoint """
+@app.route("/healthz", methods=['GET'])
+def healthz():
+    if os.environ.get('ELEVATION_DATASET') is None:
+        return make_response(jsonify({
+            "status": "FAIL", "cause": "ELEVATION_DATASET undefined"}), 500)
+    elif not gdal.Open(os.environ.get('ELEVATION_DATASET')):
+        return make_response(jsonify({
+            "status": "FAIL", "cause": "Failed to open dataset"}), 500)
+    elif not gdal.Open(os.environ.get('ELEVATION_DATASET')).GetGeoTransform():
+        return make_response(jsonify(
+            {"status": "FAIL", "cause":
+                "Failed to read dataset geotransform"}), 500)
+    elif osr.SpatialReference().ImportFromWkt(
+            gdal.Open(os.environ.get(
+                'ELEVATION_DATASET')).GetProjectionRef()) != 0:
+        return make_response(jsonify(
+            {"status": "FAIL", "cause":
+                "Failed to parse dataset projection"}), 500)
+    elif not gdal.Open(os.environ.get('ELEVATION_DATASET')).GetRasterBand(1):
+        return make_response(jsonify(
+            {"status": "FAIL", "cause":
+                "Failed to open dataset raster band"}), 500)
+
+    return jsonify({"status": "OK"})
 
 
 if __name__ == "__main__":
