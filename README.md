@@ -1,23 +1,5 @@
 # qwc-elevation-service
 
-
-Docker usage
-------------
-
-### Run docker image
-
-    docker run -p 5002:9090 sourcepole/qwc-elevation-service
-
-
-| docker parameters | Description |
-|----------------------|-------------|
-|`-p 5002:9090` | This binds port 9090 of the container to port 5002 on 127.0.0.1 of the host machine. |
-
-### Build docker image locally:
-
-    docker build .
-
-
 Elevation service
 -----------------
 
@@ -48,3 +30,16 @@ API:
         }
 
   - *output*: a json document with heights in meters: `{elevations: [h1, h2, ...]}`
+
+
+Docker usage
+------------
+
+The docker image can be run with the following command:
+
+    docker run -p 5002:9090 sourcepole/qwc-elevation-service
+
+
+| docker parameters | Description |
+|----------------------|-------------|
+|`-p 5002:9090` | Bind port 5002 on the host machine |
