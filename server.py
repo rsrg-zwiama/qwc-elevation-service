@@ -11,25 +11,33 @@ from osgeo import gdal
 from osgeo import ogr
 from osgeo import osr
 import math
-import os
 import re
 import struct
 import sys
+from qwc_services_core.tenant_handler import TenantHandler
+from qwc_services_core.runtime_config import RuntimeConfig
 
 app = Flask(__name__)
 
-
-def get_dataset():
-    dataset = getattr(g, '_dataset', None)
-    if dataset is None:
-        dataset = g._dataset = load_dataset()
-    return dataset
+tenant_handler = TenantHandler(app.logger)
 
 
-def load_dataset():
-    dsfn = os.environ.get('ELEVATION_DATASET')
+def get_dataset(tenant):
+    if 'datasets' not in g:
+        g.datasets = {}
+    if tenant not in g.datasets:
+        dataset = load_dataset(tenant)
+        g.datasets[tenant] = dataset
+    return g.datasets[tenant]
+
+
+def load_dataset(tenant):
+    config_handler = RuntimeConfig("elevation", app.logger)
+    config = config_handler.tenant_config(tenant)
+
+    dsfn = config.get('elevation_dataset')
     if dsfn is None:
-        abort(Response('ELEVATION_DATASET undefined', 500))
+        abort(Response('elevation_dataset undefined', 500))
 
     raster = gdal.Open(dsfn)
     if not raster:
@@ -66,7 +74,7 @@ def load_dataset():
 # crs: the crs of the query position
 # output: a json document with the elevation in meters: `{elevation: h}`
 def getelevation():
-    dataset = get_dataset()
+    dataset = get_dataset(tenant_handler.tenant())
     try:
         pos = request.args['pos'].split(',')
         pos = [float(pos[0]), float(pos[1])]
@@ -112,7 +120,7 @@ def getelevation():
 #        }
 # output: a json document with heights in meters: `{elevations: [h1, h2, ...]}`
 def getheightprofile():
-    dataset = get_dataset()
+    dataset = get_dataset(tenant_handler.tenant())
     query = request.json
 
     if not isinstance(query, dict) or not "projection" in query or not "coordinates" in query or not "distances" in query or not "samples" in query:
@@ -189,26 +197,10 @@ def ready():
 """ liveness probe endpoint """
 @app.route("/healthz", methods=['GET'])
 def healthz():
-    if os.environ.get('ELEVATION_DATASET') is None:
+    dataset = get_dataset(tenant_handler.tenant())
+    if dataset is None:
         return make_response(jsonify({
-            "status": "FAIL", "cause": "ELEVATION_DATASET undefined"}), 500)
-    elif not gdal.Open(os.environ.get('ELEVATION_DATASET')):
-        return make_response(jsonify({
-            "status": "FAIL", "cause": "Failed to open dataset"}), 500)
-    elif not gdal.Open(os.environ.get('ELEVATION_DATASET')).GetGeoTransform():
-        return make_response(jsonify(
-            {"status": "FAIL", "cause":
-                "Failed to read dataset geotransform"}), 500)
-    elif osr.SpatialReference().ImportFromWkt(
-            gdal.Open(os.environ.get(
-                'ELEVATION_DATASET')).GetProjectionRef()) != 0:
-        return make_response(jsonify(
-            {"status": "FAIL", "cause":
-                "Failed to parse dataset projection"}), 500)
-    elif not gdal.Open(os.environ.get('ELEVATION_DATASET')).GetRasterBand(1):
-        return make_response(jsonify(
-            {"status": "FAIL", "cause":
-                "Failed to open dataset raster band"}), 500)
+            "status": "FAIL", "cause": "Failed to open elevation_dataset"}), 500)
 
     return jsonify({"status": "OK"})
 

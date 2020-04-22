@@ -1,15 +1,46 @@
-# qwc-elevation-service
-
-Elevation service
------------------
+QWC Elevation Service
+=====================
 
 Returns elevations.
 
+
+Configuration
+-------------
+
+The static config files are stored as JSON files in `$CONFIG_PATH` with subdirectories for each tenant,
+e.g. `$CONFIG_PATH/default/*.json`. The default tenant name is `default`.
+
+### Elevation Service config
+
+* [JSON schema](schemas/qwc-elevation-service.json)
+* File location: `$CONFIG_PATH/<tenant>/elevationConfig.json`
+
+Example:
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/qwc-services/qwc-elevation-service/master/schemas/qwc-elevation-service.json",
+  "service": "elevation",
+  "config": {
+    "elevation_dataset": "/vsicurl/https://data.sourcepole.com/srtm_1km_3857.tif"
+  }
+}
+```
+
+### Environment variables
+
+Config options in the config file can be overridden by equivalent uppercase environment variables.
+
+| Variable                | Description            |
+|-------------------------|------------------------|
+| ELEVATION_DATASET       | path/to/dtm.tif        |
+
+
+Usage
+-----
+
 Run as
 
-    ELEVATION_DATASET=<path/to/dtm.tif> python elevation.py
-
-Default elevation dataset: https://data.sourcepole.com/srtm_1km_3857.tif
+    python elevation.py
 
 Requires GDAL Python bindings. `python-gdal` or `python3-gdal` packages on Debian/Ubuntu (Note: virtualenv creation requires --system-site-packages option).
 
