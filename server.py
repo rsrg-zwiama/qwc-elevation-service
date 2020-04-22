@@ -16,7 +16,6 @@ import os
 import re
 import struct
 import sys
-import requests
 
 app = Flask(__name__)
 CORS(app)
