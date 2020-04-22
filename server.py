@@ -6,7 +6,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from flask import Flask, g, abort, request, Response, jsonify, make_response
-from flask_cors import CORS
 from itertools import accumulate
 from osgeo import gdal
 from osgeo import ogr
@@ -18,7 +17,6 @@ import struct
 import sys
 
 app = Flask(__name__)
-CORS(app)
 
 
 def get_dataset():
@@ -216,4 +214,6 @@ def healthz():
 
 
 if __name__ == "__main__":
+    from flask_cors import CORS
+    CORS(app)
     app.run(host='localhost', port=5002, debug=True)
