@@ -40,7 +40,7 @@ Usage
 
 Run as
 
-    python elevation.py
+    python server.py
 
 Requires GDAL Python bindings. `python-gdal` or `python3-gdal` packages on Debian/Ubuntu (Note: virtualenv creation requires --system-site-packages option).
 
