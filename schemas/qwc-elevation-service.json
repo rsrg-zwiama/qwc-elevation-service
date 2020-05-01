@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/qwc-services/qwc-elevation-service/master/schemas/qwc-elevation-service.json",
+  "title": "QWC Elevation Service",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "title": "JSON Schema",
+      "description": "Reference to JSON schema of this config",
+      "type": "string",
+      "format": "uri",
+      "default": "https://raw.githubusercontent.com/qwc-services/qwc-elevation-service/master/schemas/qwc-elevation-service.json"
+    },
+    "service": {
+      "title": "Service name",
+      "type": "string",
+      "const": "elevation"
+    },
+    "config": {
+      "title": "Config options",
+      "type": "object",
+      "properties": {
+        "elevation_dataset": {
+          "description": "Elevation dataset (file or URL). Example: https://data.sourcepole.com/srtm_1km_3857.tif",
+          "type": "string"
+        }
+      },
+      "required": [
+        "elevation_dataset"
+      ]
+    }
+  },
+  "required": [
+    "service",
+    "config"
+  ]
+}
