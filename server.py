@@ -166,7 +166,11 @@ def getheightprofile():
             p2 = query["coordinates"][i + 1]
             dr = (p2[0] - p1[0], p2[1] - p1[1])
 
-        mu = (x - cumDistances[i]) / (cumDistances[i+1] - cumDistances[i])
+        try:
+            mu = (x - cumDistances[i]) / (cumDistances[i+1] - cumDistances[i])
+        except ZeroDivisionError:
+            mu = 0
+
         pRaster = crsTransform.TransformPoint(p1[0] + mu * dr[0], p1[1] + mu * dr[1])
 
         # Geographic coordinates to pixel coordinates
