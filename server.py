@@ -59,12 +59,17 @@ def load_dataset(tenant):
     if band.GetUnitType() == "ft":
         rasterUnitsToMeters = 0.3048
 
+    noDataValue = band.GetNoDataValue()
+    if not noDataValue:
+      noDataValue = None
+
     dataset = {
         "raster": raster,
         "band": band,
         "spatialRef": rasterSpatialRef,
         "geoTransform": gtrans,
-        "unitsToMeters": rasterUnitsToMeters
+        "unitsToMeters": rasterUnitsToMeters,
+        "noDataValue": noDataValue
     }
     return dataset
 
@@ -110,7 +115,11 @@ def getelevation():
         kRow = row - math.floor( row );
         kCol = col - math.floor( col );
         value = ( values[0] * ( 1. - kCol ) + values[1] * kCol ) * ( 1. - kRow ) + ( values[2] * ( 1. - kCol ) + values[3] * kCol ) * ( kRow )
-        return jsonify({"elevation": value * dataset["unitsToMeters"]})
+
+        if value != dataset["noDataValue"]:
+            return jsonify({"elevation": value * dataset["unitsToMeters"]})
+        else:
+            return jsonify({"elevation": 0})
 
 
 @app.route("/getheightprofile", methods=['POST'])
@@ -193,7 +202,11 @@ def getheightprofile():
             kRow = row - math.floor( row );
             kCol = col - math.floor( col );
             value = ( values[0] * ( 1. - kCol ) + values[1] * kCol ) * ( 1. - kRow ) + ( values[2] * ( 1. - kCol ) + values[3] * kCol ) * ( kRow )
-            elevations.append(value * dataset["unitsToMeters"])
+
+            if value != dataset["noDataValue"]:
+                elevations.append(value * dataset["unitsToMeters"])
+            else:
+                elevations.append(0.)
 
         x += totDistance / (numSamples - 1)
 
