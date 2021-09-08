@@ -1,5 +1,5 @@
 [![](https://github.com/qwc-services/qwc-elevation-service/workflows/build/badge.svg)](https://github.com/qwc-services/qwc-elevation-service/actions)
-[![](https://img.shields.io/docker/pulls/sourcepole/qwc-elevation-service)](https://hub.docker.com/r/sourcepole/qwc-elevation-service)
+[![docker](https://img.shields.io/docker/v/sourcepole/qwc-elevation-service?label=Docker%20image&sort=semver)](https://hub.docker.com/r/sourcepole/qwc-elevation-service)
 
 QWC Elevation Service
 =====================
