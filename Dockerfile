@@ -1,4 +1,4 @@
-FROM sourcepole/qwc-uwsgi-base:ubuntu-v2022.01.08
+FROM sourcepole/qwc-uwsgi-base:ubuntu-v2022.01.26
 
 RUN apt-get update && apt-get install -y python3-gdal
 
