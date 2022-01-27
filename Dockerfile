@@ -1,12 +1,9 @@
-FROM sourcepole/qwc-uwsgi-base:ubuntu-v2022.01.26
+FROM sourcepole/qwc-uwsgi-base:alpine-v2022.01.26
 
 ADD . /srv/qwc_service
 
 RUN \
-    apt-get update && \
-    apt-get install -y python3-gdal && \
-    pip3 install --no-cache-dir -r /srv/qwc_service/requirements.txt && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apk add --no-cache --update --virtual runtime-deps py3-gdal && \
+    pip3 install --no-cache-dir -r /srv/qwc_service/requirements.txt
 
 ENV SERVICE_MOUNTPOINT=/elevation
