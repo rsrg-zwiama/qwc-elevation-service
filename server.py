@@ -17,10 +17,12 @@ import sys
 from qwc_services_core.tenant_handler import TenantHandler
 from qwc_services_core.runtime_config import RuntimeConfig
 
+import requests
+from json import load
+
 app = Flask(__name__)
 
 tenant_handler = TenantHandler(app.logger)
-
 
 def get_dataset(tenant):
     if 'datasets' not in g:
@@ -73,23 +75,60 @@ def load_dataset(tenant):
     }
     return dataset
 
+
 @app.route("/getelevation", methods=['GET'])
 # `/getelevation?pos=<pos>&crs=<crs>`
 # pos: the query position, as `x,y`
 # crs: the crs of the query position
 # output: a json document with the elevation in meters: `{elevation: h}`
 def getelevation():
-    dataset = get_dataset(tenant_handler.tenant())
-    try:
-        pos = request.args['pos'].split(',')
-        pos = [float(pos[0]), float(pos[1])]
-    except:
-        return jsonify({"error": "Invalid position specified"})
-    try:
-        epsg = int(re.match(r'epsg:(\d+)', request.args['crs'], re.IGNORECASE).group(1))
-    except:
-        return jsonify({"error": "Invalid projection specified"})
 
+    config_handler = RuntimeConfig("elevation", app.logger)
+    config = config_handler.tenant_config(tenant_handler.tenant())
+    elevation_datasets = {}
+    for ds in config.get('elevation_datasets', []):
+        resources = {
+                'type': ds['type'],
+                'dataset': ds['dataset']
+                }
+        elevation_datasets[ds['name']] = resources
+
+    for key in elevation_datasets.keys():
+        type = elevation_datasets[key]['type']
+        dataset = elevation_datasets[key]['dataset']
+        if type == 'swisstopo-api':
+
+            if dataset is None:
+                abort(Response('elevation_api undefined', 500))
+            try:
+                pos = request.args['pos'].split(',')
+                pos = [float(pos[0]), float(pos[1])]
+            except:
+                return jsonify({"error": "Invalid position specified"})
+            try:
+                epsg = int(re.match(r'epsg:(\d+)', request.args['crs'], re.IGNORECASE).group(1))
+            except:
+                return jsonify({"error": "Invalid projection specified"})
+            try:
+                api_call = dataset + '?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
+                api_request = requests.get(api_call)
+            except:
+                return jsonify({"error": "Invalid request"})
+            if api_request.status_code == 200:
+                try:
+                    elevation = re.findall(r'[\d\.\d]+', api_request.text)
+                    elevation = float(elevation[0])
+                except:
+                    return jsonify({"error": "Invalid elevation response"})
+            else:
+                return jsonify({"error": raise_for_status(api_request.status_code)})
+            if api_request.status_code == 200:
+                return jsonify({"elevation": elevation})
+            else:
+                return jsonify({"elevation": 0})
+
+
+"""
     inputSpatialRef = osr.SpatialReference()
     if inputSpatialRef.ImportFromEPSG(epsg) != 0:
         return jsonify({"error": "Failed to parse projection"})
@@ -120,7 +159,7 @@ def getelevation():
             return jsonify({"elevation": value * dataset["unitsToMeters"]})
         else:
             return jsonify({"elevation": 0})
-
+"""
 
 @app.route("/getheightprofile", methods=['POST'])
 # `/getheightprofile`
