@@ -75,6 +75,43 @@ def load_dataset(tenant):
     }
     return dataset
 
+class ElevationDataSet():
+    ''' this class gets and handels elevations by requests'''
+    def __init__(self, name, type, dataset):
+        self.type = type
+        self.name = name
+        self.dataset = dataset
+    def get_dataset(tenant):
+        pass
+
+    def load_dataset(tenant):
+        pass
+class ElevationDataSetAPI(ElevationDataSet):
+    def get_dataset(tenant):
+
+        if self.dataset is None:
+            return (abort(Response('elevation_api undefined', 500)))
+
+
+    def load_dataset(tenant):
+        pass
+
+
+def initial(tenant):
+    config_handler = RuntimeConfig("elevation", app.logger)
+    config = config_handler.tenant_config(tenant)
+    elevation_datasets = []
+    if not config.get('elevation_datasets') == None:
+        for ds in config.get('elevation_datasets', []):
+            if ds['type'] == 'swisstopo-api':
+                resource = ElevationDataSetAPI(ds['name'],ds['type'],ds['dataset'] )
+                elevation_datasets.append(resource)
+            else:
+                resource = ElevationDataSet(ds['name'],ds['type'], ds['dataset'] )
+                elevation_datasets.append(resource)
+    else:
+        elevation_datasets.append(ElevationDataSet('elevation_dataset', 'local', config.get('elevation_dataset' ) ))
+    return(elevation_datasets)
 
 @app.route("/getelevation", methods=['GET'])
 # `/getelevation?pos=<pos>&crs=<crs>`
@@ -82,22 +119,15 @@ def load_dataset(tenant):
 # crs: the crs of the query position
 # output: a json document with the elevation in meters: `{elevation: h}`
 def getelevation():
+    tenant = tenant_handler.tenant()
+    elevation_datasets = initial(tenant)
 
-    config_handler = RuntimeConfig("elevation", app.logger)
-    config = config_handler.tenant_config(tenant_handler.tenant())
-    elevation_datasets = {}
-    for ds in config.get('elevation_datasets', []):
-        resources = {
-                'type': ds['type'],
-                'dataset': ds['dataset']
-                }
-        elevation_datasets[ds['name']] = resources
+    for elevation_dataset in elevation_datasets:
+        elevation_dataset.get_dataset(tenant)
 
-    for key in elevation_datasets.keys():
-        type = elevation_datasets[key]['type']
-        dataset = elevation_datasets[key]['dataset']
+        type = elevation_dataset.type
+        dataset = elevation_dataset.dataset
         if type == 'swisstopo-api':
-
             if dataset is None:
                 abort(Response('elevation_api undefined', 500))
             try:
@@ -109,6 +139,8 @@ def getelevation():
                 epsg = int(re.match(r'epsg:(\d+)', request.args['crs'], re.IGNORECASE).group(1))
             except:
                 return jsonify({"error": "Invalid projection specified"})
+
+
             try:
                 api_call = dataset + '?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
                 api_request = requests.get(api_call)
