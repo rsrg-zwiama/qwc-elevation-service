@@ -17,8 +17,8 @@ import sys
 from qwc_services_core.tenant_handler import TenantHandler
 from qwc_services_core.runtime_config import RuntimeConfig
 
-import requests
-from json import load
+from requests import get
+#from json import load
 
 app = Flask(__name__)
 
@@ -77,41 +77,66 @@ def load_dataset(tenant):
 
 class ElevationDataSet():
     ''' this class gets and handels elevations by requests'''
-    def __init__(self, name, type, dataset):
+    def __init__(self, name, type, dataset, elevation_mode):
         self.type = type
         self.name = name
         self.dataset = dataset
-    def get_dataset(tenant):
-        pass
+        self.elevation_mode = elevation_mode
+        self.elevation = None
+        self.error = None
+    def get_dataset(self, tenant):
+        return {"error": "1"}
 
-    def load_dataset(tenant):
-        pass
+    def load_dataset(self, tenant, pos, epsg):
+        return {"error": "2"}
+
 class ElevationDataSetAPI(ElevationDataSet):
-    def get_dataset(tenant):
+    def __init__(self, name, type, dataset, elevation_mode):
+        super().__init__(name, type, dataset, elevation_mode)
 
+    def get_dataset(self):
         if self.dataset is None:
             return (abort(Response('elevation_api undefined', 500)))
+        else:
 
+            return(self.dataset)
 
-    def load_dataset(tenant):
-        pass
+    def load_dataset(self, tenant, pos, epsg):
+        if self.dataset is None:
+            return (abort(Response('elevation_api undefined', 500)))
+        else:
+            try:
+                api_call = self.dataset + '?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
+                api_request = get(api_call)
+            except:
+                self.error = {"error": "Invalid request"}
+        if api_request.status_code == 200:
+            try:
+                self.elevation = re.findall(r'[\d\.\d]+', api_request.text)
+                self.elevation = float(self.elevation[0])
+            except:
+                self.error = {"error": "Invalid elevation response"}
+                self.elevation = 0
+        else:
+            self.error = {"error": raise_for_status(api_request.status_code)}
 
 
 def initial(tenant):
     config_handler = RuntimeConfig("elevation", app.logger)
     config = config_handler.tenant_config(tenant)
     elevation_datasets = []
-    if not config.get('elevation_datasets') == None:
+    if config.get('elevation_datasets'):
         for ds in config.get('elevation_datasets', []):
-            if ds['type'] == 'swisstopo-api':
-                resource = ElevationDataSetAPI(ds['name'],ds['type'],ds['dataset'] )
+            initdata = ds['name'],ds['type'],ds['dataset'],config.get('elevation_mode')
+            if ds['type'] == 'swisstopo-api': elevation_datasets.append(ElevationDataSetAPI(initdata)
+                resource = ElevationDataSetAPI(ds['name'],ds['type'],ds['dataset'],config.get('elevation_mode'))
                 elevation_datasets.append(resource)
             else:
-                resource = ElevationDataSet(ds['name'],ds['type'], ds['dataset'] )
+                resource = ElevationDataSet(ds['name'],ds['type'], ds['dataset'], config.get('elevation_mode'))
                 elevation_datasets.append(resource)
     else:
-        elevation_datasets.append(ElevationDataSet('elevation_dataset', 'local', config.get('elevation_dataset' ) ))
-    return(elevation_datasets)
+        elevation_datasets.append(ElevationDataSet('elevation_dataset', 'local', config.get('elevation_dataset'), config.get('elevation_mode')))
+    return (elevation_datasets)
 
 @app.route("/getelevation", methods=['GET'])
 # `/getelevation?pos=<pos>&crs=<crs>`
@@ -121,43 +146,34 @@ def initial(tenant):
 def getelevation():
     tenant = tenant_handler.tenant()
     elevation_datasets = initial(tenant)
-
+    try:
+        pos = request.args['pos'].split(',')
+        pos = [float(pos[0]), float(pos[1])]
+    except:
+        return jsonify({"error": "Invalid position specified"})
+    try:
+        epsg = int(re.match(r'epsg:(\d+)', request.args['crs'], re.IGNORECASE).group(1))
+    except:
+        return jsonify({"error": "Invalid projection specified"})
+    result = {}
     for elevation_dataset in elevation_datasets:
-        elevation_dataset.get_dataset(tenant)
+        elevation_dataset.load_dataset(tenant, pos, epsg)
+        result.update({elevation_dataset.name: elevation_dataset.elevation})
 
-        type = elevation_dataset.type
-        dataset = elevation_dataset.dataset
-        if type == 'swisstopo-api':
-            if dataset is None:
-                abort(Response('elevation_api undefined', 500))
-            try:
-                pos = request.args['pos'].split(',')
-                pos = [float(pos[0]), float(pos[1])]
-            except:
-                return jsonify({"error": "Invalid position specified"})
-            try:
-                epsg = int(re.match(r'epsg:(\d+)', request.args['crs'], re.IGNORECASE).group(1))
-            except:
-                return jsonify({"error": "Invalid projection specified"})
+    if elevation_datasets [0].elevation_mode== 'multi':
 
-
-            try:
-                api_call = dataset + '?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
-                api_request = requests.get(api_call)
-            except:
-                return jsonify({"error": "Invalid request"})
-            if api_request.status_code == 200:
-                try:
-                    elevation = re.findall(r'[\d\.\d]+', api_request.text)
-                    elevation = float(elevation[0])
-                except:
-                    return jsonify({"error": "Invalid elevation response"})
+        return jsonify(result)
+    else:
+        for value in result.values():
+            if value:
+                if value > 0:
+                    elevation = value
+                    break
+                else:
+                    elevation = value
             else:
-                return jsonify({"error": raise_for_status(api_request.status_code)})
-            if api_request.status_code == 200:
-                return jsonify({"elevation": elevation})
-            else:
-                return jsonify({"elevation": 0})
+                elevation = elevation_datasets[0].elevation
+        return jsonify({'elevation': elevation})
 
 
 """
