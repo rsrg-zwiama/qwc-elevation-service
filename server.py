@@ -25,6 +25,7 @@ app = Flask(__name__)
 
 tenant_handler = TenantHandler(app.logger)
 
+'''
 def load_dataset(tenant):
     config_handler = RuntimeConfig("elevation", app.logger)
     config = config_handler.tenant_config(tenant)
@@ -66,7 +67,7 @@ def load_dataset(tenant):
         "noDataValue": noDataValue
     }
     return dataset
-
+'''
 class ElevationDataSet():
     ''' this class gets and handels elevations by requests'''
     def __init__(self, name, type, dataset, elevation_mode):
@@ -75,10 +76,10 @@ class ElevationDataSet():
         self.dataset = dataset
         self.elevation_mode = elevation_mode
         self.elevation = None
-        self.profile = None
+        self.elevations = []
         self.error = None
 
-    def load_dataset(self, tenant, pos, epsg):
+    def load_dataset(self, tenant):
         raster = gdal.Open(self.dataset)
         if not raster:
             self.error = 'Failed to open dataset'
@@ -115,7 +116,10 @@ class ElevationDataSet():
             "unitsToMeters": rasterUnitsToMeters,
             "noDataValue": noDataValue
         }
-       # return dataset
+        return dataset
+
+    def get_height(self, tenant, pos, epsg):
+        dataset = self.load_dataset(tenant)
         inputSpatialRef = osr.SpatialReference()
         if inputSpatialRef.ImportFromEPSG(epsg) != 0:
             self.error = "Failed to parse projection"
@@ -151,14 +155,69 @@ class ElevationDataSet():
                 self.error = 'no height on this location'
                 return
 
-    def get_profile(self, query, epsg):
-        return 'bla'
+    def get_profile(self, tenant, query, epsg):
+        dataset = self.load_dataset(tenant)
+        inputSpatialRef = osr.SpatialReference()
+        if inputSpatialRef.ImportFromEPSG(epsg) != 0:
+            self.error = "Failed to parse projection"
+            return
+        crsTransform = osr.CoordinateTransformation(inputSpatialRef, dataset["spatialRef"])
+        gtrans = dataset["geoTransform"]
+
+
+        x = 0
+        i = 0
+        p1 = query["coordinates"][i]
+        p2 = query["coordinates"][i + 1]
+        dr = (p2[0] - p1[0], p2[1] - p1[1])
+        cumDistances = list(accumulate(query["distances"]))
+        cumDistances.insert(0, 0)
+        totDistance = sum(query["distances"])
+        for s in range(0, numSamples):
+            while i + 2 < len(cumDistances) and x > cumDistances[i + 1]:
+                i += 1
+                p1 = query["coordinates"][i]
+                p2 = query["coordinates"][i + 1]
+                dr = (p2[0] - p1[0], p2[1] - p1[1])
+
+            try:
+                mu = (x - cumDistances[i]) / (cumDistances[i+1] - cumDistances[i])
+            except ZeroDivisionError:
+                mu = 0
+
+            pRaster = crsTransform.TransformPoint(p1[0] + mu * dr[0], p1[1] + mu * dr[1])
+
+            # Geographic coordinates to pixel coordinates
+            col = ( -gtrans[0] * gtrans[5] + gtrans[2] * gtrans[3] - gtrans[2] * pRaster[1] + gtrans[5] * pRaster[0] ) / ( gtrans[1] * gtrans[5] - gtrans[2] * gtrans[4] )
+            row = ( -gtrans[0] * gtrans[4] + gtrans[1] * gtrans[3] - gtrans[1] * pRaster[1] + gtrans[4] * pRaster[0] ) / ( gtrans[2] * gtrans[4] - gtrans[1] * gtrans[5] )
+
+            if math.floor(col) > 0 and math.floor(col) < dataset["raster"].RasterXSize - 1 and math.floor(row) > 0 and math.floor(row) < dataset["raster"].RasterYSize - 1:
+                data = dataset["band"].ReadRaster(math.floor(col), math.floor(row), 2, 2, 2, 2, gdal.GDT_Float64)
+            else:
+                data = None
+
+            if not data or len(data) != 32:
+                self.elevations.append(0.)
+            else:
+                values = struct.unpack('d' * 4, data)
+                kRow = row - math.floor( row );
+                kCol = col - math.floor( col );
+                value = ( values[0] * ( 1. - kCol ) + values[1] * kCol ) * ( 1. - kRow ) + ( values[2] * ( 1. - kCol ) + values[3] * kCol ) * ( kRow )
+
+                if value != dataset["noDataValue"]:
+                    self.elevations.append(value * dataset["unitsToMeters"])
+                else:
+                    self.elevations.append(0.)
+
+            x += totDistance / (numSamples - 1)
+
+       # return jsonify({"elevations": elevations})
 
 class ElevationDataSetAPI(ElevationDataSet):
     def __init__(self, name, type, dataset, elevation_mode):
         super().__init__(name, type, dataset, elevation_mode)
 
-    def load_dataset(self, tenant, pos, epsg):
+    def get_height(self, tenant, pos, epsg):
         try:
             api_call = self.dataset + '/height?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
             api_request = get(api_call)
@@ -171,7 +230,7 @@ class ElevationDataSetAPI(ElevationDataSet):
         except:
             self.error =  api_request.reason or "Invalid request"
 
-    def get_profile(self, query, epsg):
+    def get_profile(self, tenant, query, epsg):
         api_call = self.dataset+'/profile.json?geom={"type": "LineString", "coordinates":'+str(query["coordinates"])+'}&sr='+str(epsg)+'&nb_points='+str(query["samples"])
         print(api_call)
         '''
@@ -181,14 +240,10 @@ class ElevationDataSetAPI(ElevationDataSet):
         try:
             api_response = get(api_call)
             if api_response.status_code == 200:
-                elevations = []
-                for h in api_response.json(): elevations.append(h["alts"]["COMB"])
-                self.profile = {"elevations": elevations}
+                for h in api_response.json(): self.elevations.append(h["alts"]["COMB"])
             elif api_response.status_code:
                 self.error = api_response.reason + ": " + api_response.text
-                print(self.error)
             else: api_response.raise_for_status()
-            return self.profile
         except:
             self.error =  api_response.reason or "Invalid request"
             print(self.error)
@@ -239,10 +294,8 @@ def getelevation():
     success = False
     error = ""
     for dataset in datasets:
-        dataset.load_dataset(tenant, pos, epsg)
+        dataset.get_height(tenant, pos, epsg)
         results.update({dataset.name: {'elevation': dataset.elevation, 'error': dataset.error}})
-        print(dataset.name)
-        print(dataset.elevation)
         if dataset.elevation: success = True
         else: error = error + dataset.name + ': ' + dataset.error +"; "
     if success == False: abort(Response(error, 500))
@@ -282,23 +335,30 @@ def getheightprofile():
     if not isinstance(query["distances"], list) or len(query["distances"]) != len(query["coordinates"]) - 1:
         return jsonify({"error": "Invalid distances specified"})
 
-    try:
-        epsg = int(re.match(r'epsg:(\d+)', query["projection"], re.IGNORECASE).group(1))
-    except:
-        return jsonify({"error": "Invalid projection specified"})
+    try: epsg = int(re.match(r'epsg:(\d+)', query["projection"], re.IGNORECASE).group(1))
+    except: return jsonify({"error": "Invalid projection specified"})
 
-    try:
-        numSamples = int(query["samples"])
-    except:
-        return jsonify({"error": "Invalid sample count specified"})
+    try: numSamples = int(query["samples"])
+    except: return jsonify({"error": "Invalid sample count specified"})
 
     inputSpatialRef = osr.SpatialReference()
     if inputSpatialRef.ImportFromEPSG(epsg) != 0:
         return jsonify({"error": "Failed to parse projection"})
-
+    answer = {}
+    test = {}
+    success = False
+    errormsg = ""
+    suffix = ""
+    i = 0
     for dataset in datasets:
-        dataset.get_profile(query, epsg)
-        return(jsonify(dataset.profile))
+        dataset.get_profile(tenant, query, epsg)
+        answer.update({"elevations"+suffix: dataset.elevations})
+        i += 1
+        suffix = "_"+str(i)
+        if dataset.elevations: success = True
+        else: errormsg = errormsg + dataset.name + ': ' + dataset.error +"; "
+    if success == False: abort(Response(errormsg, 500))
+    else: return jsonify(answer)
 
 '''
     dataset = get_dataset(tenant_handler.tenant())
