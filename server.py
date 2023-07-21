@@ -30,7 +30,6 @@ class ElevationDataSet():
         self.type = type
         self.name = name
         self.datasource = datasource
-        self.elevation_mode = elevation_mode
         self.elevation = None
         self.elevations = []
         self.error = None
@@ -213,14 +212,15 @@ def initial(tenant):
     config_handler = RuntimeConfig("elevation", app.logger)
     config = config_handler.tenant_config(tenant)
     datasources = []
-    if config.get('elevation_datasets'):
-        for ds in config.get('elevation_datasets', []):
-            initdata = ds['name'],ds['type'],ds['datasource'],config.get('elevation_mode')
+
+    dsfn = config.get('elevation_dataset')
+    if isinstance(dsfn, list):
+        for ds in dsfn:
             if ds['type'] == 'swisstopo-api':
                 datasources.append(ElevationDataSetAPI(ds['name'],ds['type'],ds['datasource'],config.get('elevation_mode')))
             else:
                 datasources.append(ElevationDataSet(ds['name'],ds['type'],ds['datasource'],config.get('elevation_mode')))
-    elif config.get('elevation_dataset'):
+    elif isinstance(dsfn, str):
         datasources.append(ElevationDataSet('elevation_dataset', 'local', config.get('elevation_dataset'), config.get('elevation_mode')))
     else:
         abort(Response('elevation_dataset(s) undefined', 500))
