@@ -36,10 +36,10 @@ class ElevationDataSet():
         self.error = None
 
     def load_dataset(self, tenant):
-        '''This function opens datasource and creates a dataset'''
+        '''This function opens datasource and returns dataset'''
         raster = gdal.Open(self.datasource)
         if not raster:
-            self.error = 'Failed to open datasource: ' + gdal.GetLastErrorMsg()
+            self.error = 'Failed to open datasource: Source not accessible or existing'
             return
 
         gtrans = raster.GetGeoTransform()
@@ -76,7 +76,7 @@ class ElevationDataSet():
         return dataset
 
     def get_height(self, tenant, pos, epsg):
-        '''Function to save height to class variable'''
+        '''Function to save height to self.elevation'''
         dataset = self.load_dataset(tenant)
         if not dataset: return
         inputSpatialRef = osr.SpatialReference()
@@ -115,7 +115,7 @@ class ElevationDataSet():
                 return
 
     def get_profile(self, tenant, query, epsg, numSamples):
-        '''Function to save heightprofile to class variable'''
+        '''Function to save list of heights to self.elevations'''
         dataset = self.load_dataset(tenant)
         if not dataset: return
         inputSpatialRef = osr.SpatialReference()
@@ -167,36 +167,37 @@ class ElevationDataSet():
 
 
 class ElevationDataSetAPI(ElevationDataSet):
-    ''' this class in child of ElevationDataSet gets and handels elevations by requests to API'''
+    ''' this class, child of ElevationDataSet, gets and handels elevations by requests to API'''
     def __init__(self, name, type, datasource, elevation_mode):
         super().__init__(name, type, datasource, elevation_mode)
 
     def get_height(self, tenant, pos, epsg):
-        '''Function to save height to class variable'''
+        '''Function to save height value to self.elevation'''
+        api_call = self.datasource + '/height?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
         try:
-            api_call = self.datasource + '/height?easting=' + str(pos[0]) + '&northing=' + str(pos[1]) + '&sr=' + str(epsg)
-            api_request = get(api_call)
-            if api_request.status_code == 200:
-                try: self.elevation = float(re.findall(r'[\d\.\d]+', api_request.text)[0])
+            api_response = get(api_call)
+            if api_response.status_code == 200:
+                try: self.elevation = float(re.findall(r'[\d\.\d]+', api_response.text)[0])
                 except: self.error = "Invalid elevation response"
-            elif api_request.status_code:
-                self.error = api_request.reason + ": " + api_request.text
-            else: api_request.raise_for_status()
-        except:
-            self.error =  api_request.reason or "Invalid request"
+            else:
+                api_response.status_code
+                self.error = api_response.reason + ": " + api_response.text
+        except requests.exceptions.RequestException as err:
+            self.error = str(err) or "Invalid request"
 
     def get_profile(self, tenant, query, epsg, numSamples):
-        '''Function to save heightprofile to class variable'''
+        '''Function to save list of heights to self.elevations'''
         api_call = self.datasource+'/profile.json?geom={"type": "LineString", "coordinates":'+str(query["coordinates"])+'}&sr='+str(epsg)+'&nb_points='+str(numSamples)
         try:
             api_response = get(api_call)
             if api_response.status_code == 200:
                 for h in api_response.json(): self.elevations.append(h["alts"]["COMB"])
-            elif api_response.status_code:
+            else:
+                api_response.status_code
                 self.error = api_response.reason + ": " + api_response.text
-            else: api_response.raise_for_status()
-        except:
-            self.error =  api_response.reason or "Invalid request"
+        except requests.exceptions.RequestException as err:
+            self.error = str(err) or "Invalid request"
+
 
 def get_datasource(tenant):
     '''Function tests if data already exists in current request'''
@@ -242,27 +243,24 @@ def getelevation():
         epsg = int(re.match(r'epsg:(\d+)', request.args['crs'], re.IGNORECASE).group(1))
     except:
         return jsonify({"error": "Invalid projection specified"})
-    results = {}
+
+    answer = {}
     success = False
-    error = ""
+    errormsg = ""
+    suffix = ""
+    i = 0
     for datasource in datasources:
         datasource.get_height(tenant, pos, epsg)
-        results.update({datasource.name: {'elevation': datasource.elevation, 'error': datasource.error}})
-        if datasource.elevation: success = True
-        else: error = error + datasource.name + ': ' + datasource.error +"; "
-    if success == False: abort(Response(error, 500))
+        if datasource.elevation:
+            answer.update({"elevation"+suffix: datasource.elevation})
+            i += 1
+            suffix = "_"+str(i)
+            success = True
+        else: errormsg = errormsg + datasource.name + ': ' + datasource.error +"; "
+    answer.update({"errors": errormsg})
+    if success: return jsonify(answer)
+    else: abort(Response(errormsg, 500))
 
-    if datasources[0].elevation_mode== 'multi':
-        return jsonify(results)
-    else:
-        for result in results.values():
-            if result['elevation']:
-                if result['elevation'] > 0:
-                    answer = {'elevation': result['elevation']}
-                    break
-                else: answer = {'elevation': result['elevation']}
-            else: answer = {'error': result['error']}
-        return jsonify(answer)
 
 @app.route("/getheightprofile", methods=['POST'])
 # `/getheightprofile`
