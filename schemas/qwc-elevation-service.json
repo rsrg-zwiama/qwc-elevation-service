@@ -21,8 +21,20 @@
       "type": "object",
       "properties": {
         "elevation_dataset": {
-          "description": "Elevation dataset (file or URL). Example: https://data.sourcepole.com/srtm_1km_3857.tif",
-          "type": "string"
+          "description": "Elevation dataset (file or URL) or list of datasets. Example: https://data.sourcepole.com/srtm_1km_3857.tif",
+          "type": ["string", "array"],
+          "properties":{
+            "name": {
+              "description": "name of dataset",
+              "type": "string"},
+            "type": {
+              "description": "local or swisstopo-api",
+              "type": "string"},
+            "dataset": {
+              "description": "Elevation dataset (file or URL). Example: https://data.sourcepole.com/srtm_1km_3857.tif",
+              "type": "string"
+            }
+          }
         }
       },
       "required": [
