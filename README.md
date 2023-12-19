@@ -43,7 +43,7 @@ Usage
 
 Run as
 
-    python server.py
+    python src/server.py
 
 Requires GDAL Python bindings. `python-gdal` or `python3-gdal` packages on Debian/Ubuntu (Note: virtualenv creation requires --system-site-packages option).
 
