@@ -1,11 +1,13 @@
-FROM sourcepole/qwc-uwsgi-base:alpine-v2023.10.26
+FROM sourcepole/qwc-uwsgi-base:alpine-v2025.01.24
 
-ADD requirements.txt /srv/qwc_service/requirements.txt
+WORKDIR /srv/qwc_service
+ADD pyproject.toml uv.lock ./
 
 RUN \
     apk add --no-cache --update --virtual runtime-deps py3-gdal && \
-    pip3 install --no-cache-dir -r /srv/qwc_service/requirements.txt
+    uv venv --system-site-packages && \
+    uv sync --frozen
 
-ADD src /srv/qwc_service/
+ADD src .
 
 ENV SERVICE_MOUNTPOINT=/elevation

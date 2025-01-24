@@ -41,11 +41,12 @@ Config options in the config file can be overridden by equivalent uppercase envi
 Usage
 -----
 
-Run as
+Install GDAL Python bindings. `python-gdal` or `python3-gdal` packages on Debian/Ubuntu.
 
-    python src/server.py
+Run with uv:
 
-Requires GDAL Python bindings. `python-gdal` or `python3-gdal` packages on Debian/Ubuntu (Note: virtualenv creation requires --system-site-packages option).
+    uv venv --system-site-packages
+    ELEVATION_DATASET=/vsicurl/https://data.sourcepole.com/srtm_1km_3857.tif uv run src/server.py
 
 API:
 * Runs by default on `http://localhost:5002`
@@ -53,6 +54,7 @@ API:
   - *pos*: the query position, as `x,y`
   - *crs*: the crs of the query position
   - *output*: a json document with the elevation in meters: `{elevation: h}`
+  - Example: http://localhost:5002/getelevation?pos=45.976,7.658&crs=EPSG:4326
 * `POST: /getheightprofile`
   - *payload*: a json document as follows:
 
