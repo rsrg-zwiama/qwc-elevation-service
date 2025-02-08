@@ -33,7 +33,7 @@ wheels = [
 
 [[package]]
 name = "flask"
-version = "3.0.0"
+version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "blinker" },
@@ -42,9 +42,9 @@ dependencies = [
     { name = "jinja2" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/09/c1a7354d3925a3c6c8cfdebf4245bae67d633ffda1ba415add06ffc839c5/flask-3.0.0.tar.gz", hash = "sha256:cfadcdb638b609361d29ec22360d6070a77d7463dcb3ab08d2c2f2f168845f58", size = 674171 }
+sdist = { url = "https://files.pythonhosted.org/packages/41/e1/d104c83026f8d35dfd2c261df7d64738341067526406b40190bc063e829a/flask-3.0.3.tar.gz", hash = "sha256:ceb27b0af3823ea2737928a4d99d125a06175b8512c445cbd9a9ce200ef76842", size = 676315 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/42/015c23096649b908c809c69388a805a571a3bea44362fe87e33fc3afa01f/flask-3.0.0-py3-none-any.whl", hash = "sha256:21128f47e4e3b9d597a3e8521a329bf56909b690fcc3fa3e477725aa81367638", size = 99724 },
+    { url = "https://files.pythonhosted.org/packages/61/80/ffe1da13ad9300f87c93af113edd0638c75138c42a0994becfacac078c06/flask-3.0.3-py3-none-any.whl", hash = "sha256:34e815dfaa43340d1d15a5c3a02b8476004037eb4840b34910c6e21679d288f3", size = 101735 },
 ]
 
 [[package]]
@@ -203,11 +203,11 @@ dev = [
 
 [[package]]
 name = "qwc-services-core"
-version = "1.4.0"
+version = "1.4.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/63/ca/4a85e4c511dcd2565ca041e27a5c1f67ee6ffc2981b8e98f241bc0eb5646/qwc_services_core-1.4.0.tar.gz", hash = "sha256:f4d1141b11e646470461ebad4a9f02a01e5d94d4220a112046b39c1157e4839e", size = 14800 }
+sdist = { url = "https://files.pythonhosted.org/packages/86/f5/b54ff31901c7867e61745eb624ec05da2581b28d0ea9f3e9019b170bc45b/qwc_services_core-1.4.2.tar.gz", hash = "sha256:9eab6b5c1c4e3750f15aa7a5ddbfadb04195f798e5f5050cbe787f045fe86646", size = 14790 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/61/112359e9a6bddfd9bfbf728f68fcffc627fd5144111b5eac04d19a7e0a47/qwc_services_core-1.4.0-py3-none-any.whl", hash = "sha256:84ccf79b62e44a4fa7587445d6dda992ddf9da6b4ee83819434ce538ed7a8983", size = 17499 },
+    { url = "https://files.pythonhosted.org/packages/11/8e/625a72e1bd7e63b27e08735b074076822d540d798d18fc65a530d0fe6421/qwc_services_core-1.4.2-py3-none-any.whl", hash = "sha256:9167c46ed83f34aed46ceaeec9c6b5c681598ec0185c7d9cb449a3767eb80fec", size = 17479 },
 ]
 
 [[package]]
