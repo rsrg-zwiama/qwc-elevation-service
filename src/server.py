@@ -14,12 +14,15 @@ import math
 import re
 import struct
 import sys
-from qwc_services_core.tenant_handler import TenantHandler
+from qwc_services_core.tenant_handler import (
+    TenantHandler, TenantPrefixMiddleware, TenantSessionInterface)
 from qwc_services_core.runtime_config import RuntimeConfig
 
 app = Flask(__name__)
 
 tenant_handler = TenantHandler(app.logger)
+app.wsgi_app = TenantPrefixMiddleware(app.wsgi_app)
+app.session_interface = TenantSessionInterface()
 
 
 def get_dataset(tenant):
