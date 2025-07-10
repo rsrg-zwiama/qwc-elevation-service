@@ -71,11 +71,5 @@ API:
 Docker usage
 ------------
 
-The docker image can be run with the following command:
+See sample [docker-compose.yml](https://github.com/qwc-services/qwc-docker/blob/master/docker-compose-example.yml) of [qwc-docker](https://github.com/qwc-services/qwc-docker).
 
-    docker run -p 5002:9090 sourcepole/qwc-elevation-service
-
-
-| docker parameters | Description |
-|----------------------|-------------|
-|`-p 5002:9090` | Bind port 5002 on the host machine |
