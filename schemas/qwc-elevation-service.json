@@ -39,7 +39,7 @@
                 "description": "Elevation dataset (file or URL). Example: https://data.sourcepole.com/srtm_1km_3857.tif",
                 "type": "string"
               }
-            },
+            }
           }
         }
       }
