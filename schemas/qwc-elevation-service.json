@@ -38,6 +38,10 @@
               "dataset_path": {
                 "description": "Elevation dataset (file or URL). Example: https://data.sourcepole.com/srtm_1km_3857.tif",
                 "type": "string"
+              },
+              "dataset_type": {
+                "description": "Elevation dataset data type like file or api",
+                "type": "string"
               }
             }
           }

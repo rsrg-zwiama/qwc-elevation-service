@@ -32,7 +32,16 @@ def get_datasets(tenant):
     return g.datasets[tenant]
 
 
-def load_single_dataset(dataset_filename):
+def load_single_dataset(dataset_filename, dataset_type):
+
+    if dataset_type == "api":
+        dataset = {
+                "type": api,
+                "spatialRef": 2056,
+                "noDataValue": 0
+            }
+        return dataset
+
     raster = gdal.Open(dataset_filename)
     if not raster:
         abort(make_response('Failed to open dataset', 500))
@@ -84,13 +93,14 @@ def load_datasets(tenant):
     if single_dataset:
         datasets_config.insert(0, {
             "name": None,
-            "dataset_path": single_dataset
+            "dataset_path": single_dataset,
+            "dataset_type": None
         })
 
     datasets = [
         (
             cfg.get("name", None),
-            load_single_dataset(cfg["dataset_path"])
+            load_single_dataset(cfg["dataset_path"], cfg.get("dataset_type", None))
         )
         for cfg in datasets_config
     ]
