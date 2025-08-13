@@ -36,11 +36,19 @@
                 "type": "string"
               },
               "dataset_path": {
-                "description": "Elevation dataset (file or URL). Example: https://data.sourcepole.com/srtm_1km_3857.tif",
+                "description": "Elevation dataset (file or URL). Examples: https://data.sourcepole.com/srtm_1km_3857.tif or https://api.open-elevation.com/api/v1/lookup?locations={x},{y}",
                 "type": "string"
               },
               "dataset_type": {
-                "description": "Elevation dataset data type like file or api",
+                "description": "Elevation dataset datatype. Examples: rasterfile, api.",
+                "type": "string"
+              },
+              "api_crs": {
+                "description": "EPSG code of the coordinate system for the pointgeometry expected by the api",
+                "type": "number"
+              },
+              "api_elevation_key": {
+                "description": "key of the elevation object returned by the api",
                 "type": "string"
               }
             }
