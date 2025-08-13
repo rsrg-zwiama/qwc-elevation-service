@@ -11,6 +11,7 @@ from osgeo import gdal
 from osgeo import osr
 import math
 import re
+import requests
 import struct
 from qwc_services_core.tenant_handler import (
     TenantHandler, TenantPrefixMiddleware, TenantSessionInterface)
@@ -32,15 +33,7 @@ def get_datasets(tenant):
     return g.datasets[tenant]
 
 
-def load_single_dataset(dataset_filename, dataset_type):
-
-    if dataset_type == "api":
-        dataset = {
-                "type": api,
-                "spatialRef": 2056,
-                "noDataValue": 0
-            }
-        return dataset
+def load_single_dataset(dataset_filename):
 
     raster = gdal.Open(dataset_filename)
     if not raster:
@@ -72,10 +65,23 @@ def load_single_dataset(dataset_filename, dataset_type):
         "spatialRef": rasterSpatialRef,
         "geoTransform": gtrans,
         "unitsToMeters": rasterUnitsToMeters,
-        "noDataValue": noDataValue
+        "noDataValue": noDataValue,
+        "type": "rasterfile"
     }
     return dataset
 
+def load_api_dataset(datasets_config):
+    apiSpatialRef = osr.SpatialReference()
+    if apiSpatialRef.ImportFromEPSG(datasets_config["dataset_crs"]) != 0:
+        abort(make_response('elevation_datasets dataset_crs parameter for api is not valid', 500))
+
+    dataset = {
+            "type": datasets_config["dataset_type"],
+            "spatialRef": apiSpatialRef,
+            "url": datasets_config["dataset_path"],
+            "elevation_key": datasets_config["elevation_key"]
+        }
+    return dataset
 
 def load_datasets(tenant):
     config_handler = RuntimeConfig("elevation", app.logger)
@@ -93,21 +99,41 @@ def load_datasets(tenant):
     if single_dataset:
         datasets_config.insert(0, {
             "name": None,
-            "dataset_path": single_dataset,
-            "dataset_type": None
+            "dataset_path": single_dataset
         })
 
     datasets = [
-        (
-            cfg.get("name", None),
-            load_single_dataset(cfg["dataset_path"], cfg.get("dataset_type", None))
-        )
+            (
+                cfg.get("name", None),
+                load_api_dataset(cfg) if cfg.get("dataset_type") == "api"
+                else  load_single_dataset(cfg["dataset_path"])
+            )
         for cfg in datasets_config
     ]
     return datasets
 
 
 def sample_elevation(dataset, pos, crsTransform):
+    if dataset.get("type") == "api":
+        posApi = crsTransform.TransformPoint(pos[0], pos[1])
+        request_url = dataset["url"].format(x=posApi[0], y=posApi[1])
+        try:
+            api_response = requests.get(request_url)
+            if api_response.status_code == 200:
+                data, elevation, key = [api_response.json()], 0, dataset["elevation_key"]
+                while data:
+                    element = data.pop()
+                    if isinstance(element, dict):
+                        for k, v in element.items():
+                            if k == key:
+                                return float(v)
+                            data.append(v)
+                    elif isinstance(element, list):
+                        data.extend(element)
+        except requests.exceptions.RequestException as err:
+            app.logger.error(err)
+        return 0
+
     gtrans = dataset["geoTransform"]
 
     pRaster = crsTransform.TransformPoint(pos[0], pos[1])
